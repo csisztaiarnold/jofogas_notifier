@@ -16,7 +16,7 @@ def read_search_queries(file_path):
         return [line.strip() for line in file.readlines()]
 
 
-def scrape_and_save_links(search_queries, output_file, play_sound):
+def scrape_and_save_links(search_queries, output_file, play_sound, max_price):
     base_url = "https://www.jofogas.hu/magyarorszag?q={}"
     new_links = []
 
@@ -28,9 +28,18 @@ def scrape_and_save_links(search_queries, output_file, play_sound):
         items = soup.select('.list-items .list-item')
         for item in items:
             link = item.select_one('.item-title a')['href']
-            if not link_exists(link, output_file):
-                save_link(link, output_file)
-                new_links.append(link)
+            price_span = item.select_one('.price-value')
+            price = None
+            if price_span and 'content' in price_span.attrs:
+                try:
+                    price = int(price_span['content'])
+                except ValueError:
+                    pass
+
+            if price is not None and (max_price is None or price <= max_price):
+                if not link_exists(link, output_file):
+                    save_link(link, output_file, price)
+                    new_links.append((link, price))
 
     if new_links:
         notify_new_links(new_links, play_sound)
@@ -45,9 +54,9 @@ def link_exists(link, output_file):
         return link in file.read()
 
 
-def save_link(link, output_file):
+def save_link(link, output_file, price):
     with open(output_file, 'a') as file:
-        file.write(link + '\n')
+        file.write(f"{link} ({price})\n")
 
 
 def notify_new_links(links, play_sound):
@@ -65,8 +74,8 @@ def notify_new_links(links, play_sound):
 
     text_area.config(yscrollcommand=scrollbar.set)
 
-    for link in links:
-        text_area.insert(tk.END, link + '\n')
+    for link, price in links:
+        text_area.insert(tk.END, f"{link} ({price})\n")
 
     text_area.config(state=tk.DISABLED)
 
@@ -83,11 +92,11 @@ def countdown_timer(seconds):
     print()
 
 
-def start_scraping(timer_duration, play_sound):
+def start_scraping(timer_duration, play_sound, max_price):
     search_queries = read_search_queries('search_queries.txt')
     print("Scraping started...")
     while True:
-        scrape_and_save_links(search_queries, 'output_links.txt', play_sound)
+        scrape_and_save_links(search_queries, 'output_links.txt', play_sound, max_price)
         countdown_timer(timer_duration)
 
 
@@ -96,7 +105,8 @@ if __name__ == "__main__":
     parser.add_argument('--timer', type=int, default=180, help='Set the timer duration in seconds')
     parser.add_argument('--sound', type=str, choices=['yes', 'no'], default='no',
                         help='Enable or disable sound notification')
+    parser.add_argument('--max_price', type=int, help='Set the maximum price for the items')
     args = parser.parse_args()
 
     play_sound = args.sound == 'yes'
-    start_scraping(args.timer, play_sound)
+    start_scraping(args.timer, play_sound, args.max_price)

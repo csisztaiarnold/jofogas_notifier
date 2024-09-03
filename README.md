@@ -31,7 +31,7 @@ Modify the `search_queries.txt` list file to include your desired search queries
 
 Run the script with the following command:
 ```sh
-python3 jofogas_notifier.py --timer <time_in_seconds> --sound <yes|no>
+python3 jofogas_notifier.py --timer <time_in_seconds> --sound <yes|no> --max_price <max_price>
 ```
 
 ### timer
@@ -42,3 +42,6 @@ Sets the interval in seconds between each search query. Default value is `300` (
 
 Enables or disables the notification sound. Default value is `no`.
 
+### max_price
+
+Limit the query to a certain maximum price. By default, there is no limit
